@@ -22,7 +22,10 @@ services:
       - ./sql:/docker-entrypoint-initdb.d
       
   interlok:
-    image: lewinc/interlok-api-demo:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lewinc/interlok-api-demo:snapshot
     container_name: api_demo_interlok
     hostname: api_demo_interlok.local
     environment:
