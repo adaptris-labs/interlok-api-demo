@@ -1,7 +1,7 @@
 # interlok-api-demo
 Docker image that demonstrates using interlok as a front-end to a simple little contact manager database.
 
-Requires mysql so it's best to start everything via docker-compose after cloning this project. `lewinc/interlok-api-demo:latest` is triggered `adaptris/interlok:snapshot-alpine` so will pretty much be running bleeding edge build.
+Requires mysql so it's best to start everything via docker-compose after cloning this project. `lewinc/interlok-api-demo:latest` is triggered automatically by `adaptris/interlok:snapshot-alpine` so this will pretty much be running bleeding edge build.
 
 ```
 version: '2'
