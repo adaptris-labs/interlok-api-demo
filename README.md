@@ -1,2 +1,4 @@
 # interlok-api-demo
-Interlok as a REST style frontend to a database
+Docker image that demonstrates using interlok as a front-end to a silly little contact manager database.
+
+
