@@ -1,0 +1,182 @@
+swagger: "2.0"
+info:
+  description: "This is a Simple little contact manager database; it's not big it's not clever."
+  version: "1.0.0"
+  title: "Simple Contact Manager"
+  license:
+    name: "Apache 2.0"
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+host: "localhost:8080"
+basePath: "/"
+produces:
+  - application/json
+schemes:
+- "http"
+paths:
+  /contacts:
+    post:
+      summary: "Add a new Contact"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Contact that needs to be added."
+        required: true
+        schema:
+          $ref: "#/definitions/Contact"
+      responses:
+        400:
+          description: "Couldn't handle it"
+        500:
+          description: "Error during processing"
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/ContactId"
+    get:
+      summary: "Get All the users"
+      produces:
+      - "application/json"
+      responses:
+        400:
+          description: "Couldn't handle it"
+        500:
+          description: "Error during processing"
+        200:
+          description: "successful operation"
+          schema:
+              $ref: "#/definitions/DatabaseResult"
+  /contacts/{contactId}:
+    get:
+      summary: "Get user by user name"
+      description: ""
+      produces:
+      - "application/json"
+      parameters:
+      - name: "contactId"
+        in: "path"
+        description: "The ID that needs to be fetched."
+        required: true
+        type: "string"
+      responses:
+        400:
+          description: "Couldn't handle it"
+        500:
+          description: "Error during processing"
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/DatabaseResult"
+    delete:
+      summary: "Delete a user by contactId"
+      description: ""
+      produces:
+      - "application/json"
+      parameters:
+      - name: "contactId"
+        in: "path"
+        description: "The ID that needs to be deleted."
+        required: true
+        type: "string"
+      responses:
+        400:
+          description: "Couldn't handle it"
+        500:
+          description: "Error during processing"
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/ContactDeleted"
+    patch:
+      summary: "Update an existing Contact"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "contactId"
+        in: "path"
+        description: "The ID that needs to be patched."
+        required: true
+        type: "string"
+      - in: "body"
+        name: "body"
+        description: "Contact that should be modified"
+        required: true
+        schema:
+          $ref: "#/definitions/Contact"
+      responses:
+        400:
+          description: "Couldn't handle it"
+        500:
+          description: "Error during processing"
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/DatabaseResult"
+
+definitions:
+  ContactId:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+        example: "ee57e611-1498-4652-a37c-12d55e686ca5"
+  ContactDeleted:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+        example: "ee57e611-1498-4652-a37c-12d55e686ca5"
+      status:
+        type: "string"
+        enum:
+        - "deleted"
+  DatabaseContact:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+        example: "ee57e611-1498-4652-a37c-12d55e686ca5"
+      FirstName:
+        type: "string"
+        example: "John"
+      LastName:
+        type: "string"
+        example: "Smith"
+      Email:
+        type: "string"
+        example: "john.smith@abclabs.com"
+      Phone:
+        type: "string"
+        example: "+44 1234 56789"
+  Contact:
+    type: "object"
+    required:
+    - "FirstName"
+    - "LastName"
+    - "Email"
+    - "Phone"
+    properties:
+      FirstName:
+        type: "string"
+        example: "John"
+      LastName:
+        type: "string"
+        example: "Smith"
+      Email:
+        type: "string"
+        example: "john.smith@abclabs.com"
+      Phone:
+        type: "string"
+        example: "+44 1234 56789"
+  DatabaseResult:
+    type: "object"
+    properties:
+      result:
+        type: "array"
+        items:
+          $ref: "#/definitions/DatabaseContact"

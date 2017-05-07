@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<adapter>
+  <unique-id>${adapter.unique.id}</unique-id>
+  <shared-components>
+    <connections>
+      <jdbc-pooled-connection>
+        <unique-id>LocalMySQL</unique-id>
+        <test-statement>SELECT DATABASE(), VERSION(), NOW(), USER();</test-statement>
+        <driver-imp>com.mysql.jdbc.Driver</driver-imp>
+        <username>${local_db_username}</username>
+        <password>${local_db_password}</password>
+        <connect-url>${local_db_connect_url}</connect-url>
+      </jdbc-pooled-connection>
+      <jetty-embedded-connection>
+        <unique-id>jetty-connection</unique-id>
+      </jetty-embedded-connection>
+    </connections>
+  </shared-components>
+  <channel-list>
+    <channel>
+      <unique-id>ContactManager</unique-id>
+      <message-error-handler class="standard-processing-exception-handler">
+        <processing-exception-service class="service-list">
+          <services>
+            <embedded-scripting-service>
+              <unique-id>Log object metadata</unique-id>
+              <language>javascript</language>
+              <script><![CDATA[
+                var objectHeaders = message.getObjectHeaders();
+
+                var exceptionReport = new java.util.HashMap();
+                exceptionReport.put("workflow", message.getMetadataValue("workflowId"));
+                var exception = objectHeaders["java.lang.Exception"];
+                if(exception != null) {
+                  exceptionReport.put("exception", exception);
+                }
+                var exceptionLocation = objectHeaders["java.lang.Exception_Cause"];
+                if(exceptionLocation != null) {
+                  exceptionReport.put("exceptionLocation", exceptionLocation);
+                }
+                message.setContent(new com.fasterxml.jackson.databind.ObjectMapper().writer(new com.fasterxml.jackson.core.util.DefaultPrettyPrinter()).writeValueAsString(exceptionReport), "UTF-8");
+
+              ]]></script>
+            </embedded-scripting-service>
+            <standalone-producer>
+              <producer class="jetty-standard-response-producer">
+                <status-provider class="http-configured-status">
+                  <status>INTERNAL_ERROR_500</status>
+                </status-provider>
+                <send-payload>true</send-payload>
+              </producer>
+            </standalone-producer>
+          </services>
+        </processing-exception-service>
+      </message-error-handler>
+      <consume-connection class="shared-connection">
+        <lookup-name>jetty-connection</lookup-name>
+      </consume-connection>
+      <produce-connection class="null-connection"/>
+      <workflow-list>
+        <standard-workflow>
+          <consumer class="jetty-message-consumer">
+            <unique-id>/contacts/*</unique-id>
+            <destination class="configured-consume-destination">
+              <destination>/contacts/*</destination>
+            </destination>
+            <parameter-handler class="jetty-http-parameters-as-metadata"/>
+            <header-handler class="jetty-http-ignore-headers"/>
+          </consumer>
+          <service-collection class="service-list">
+            <services>
+              <log-message-service>
+                <include-payload>true</include-payload>
+                <log-level>DEBUG</log-level>
+              </log-message-service>
+              <branching-service-collection>
+                <unique-id>HTTP Router</unique-id>
+                <first-service-id>route</first-service-id>
+                <services>
+                  <embedded-scripting-service>
+                    <unique-id>route</unique-id>
+                    <language>javascript</language>
+                    <branching-enabled>true</branching-enabled>
+                    <script><![CDATA[
+                    var routes = [
+                      { method:  "GET",
+                        pattern: "^/contacts/swagger$",
+                        vars:    [],
+                        service: "swagger" },
+                      { method:  "GET",
+                        pattern: "^/contacts/(.*)$",
+                        vars:    ["ContactId"],
+                        service: "retrieve" },
+                      { method:  "DELETE",
+                        pattern: "^/contacts/(.*)$",
+                        vars:    ["ContactId"],
+                        service: "delete" },
+                      { method:  "GET",
+                        pattern: "^/contacts$",
+                        vars:    [],
+                        service: "list" },
+                      { method:  "POST",
+                        pattern: "^/contacts$",
+                        vars:    [],
+                        service: "save" },
+                      { method:  "PATCH",
+                        pattern: "^/contacts/(.*)$",
+                        vars:    ["ContactId"],
+                        service: "update" }
+                    ]
+
+                    var method = message.getMetadataValue("httpmethod")
+                    var uri    = message.getMetadataValue("jettyURI")
+                    message.setNextServiceId("NotHandled")
+                    // Match each route against the actual Jetty metadata from the HTTP request
+                    for(var i=0; i<routes.length; i++) {
+                      log.trace("Trying to match route: " + JSON.stringify(routes[i]));
+
+                      if(method != routes[i].method) {
+                        log.trace("HTTP method " + routes[i].method + " did not match " + method);
+                        continue;
+                      }
+
+                      var result = new RegExp(routes[i].pattern).exec(uri)
+                      if(result == null) {
+                        log.trace("Pattern " + routes[i].pattern + " did not match " + uri);
+                        continue;
+                      }
+
+                      // Both method and pattern match, now parse out the vars
+                      for(var j=0; j<routes[i].vars.length; j++) {
+                        var name  = routes[i].vars[j]
+                        var value = result[j+1]
+                        log.trace("Adding metadata " + name + "=" + value)
+                        message.addMetadata(name, value)
+                      }
+
+                      message.setNextServiceId(routes[i].service)
+
+                      break
+                    }
+                  ]]></script>
+                  </embedded-scripting-service>
+                  <service-list>
+                    <unique-id>save</unique-id>
+                    <services>
+                      <!--
+                      {
+                        "FirstName" : "Lewin",
+                        "LastName" : "Chan",
+                        "Email" : "lchan@adaptris-abclabs.com",
+                        "Phone" : "0700 987654",
+                      }
+                      -->
+                      <json-path-service>
+                        <source class="string-payload-data-input-parameter"/>
+                        <json-path-execution>
+                          <source class="constant-data-input-parameter">
+                            <value>$.FirstName</value>
+                          </source>
+                          <target class="metadata-data-output-parameter">
+                            <metadata-key>FirstName</metadata-key>
+                          </target>
+                        </json-path-execution>
+                        <json-path-execution>
+                          <source class="constant-data-input-parameter">
+                            <value>$.LastName</value>
+                          </source>
+                          <target class="metadata-data-output-parameter">
+                            <metadata-key>LastName</metadata-key>
+                          </target>
+                        </json-path-execution>
+                        <json-path-execution>
+                          <source class="constant-data-input-parameter">
+                            <value>$.Email</value>
+                          </source>
+                          <target class="metadata-data-output-parameter">
+                            <metadata-key>Email</metadata-key>
+                          </target>
+                        </json-path-execution>
+                        <json-path-execution>
+                          <source class="constant-data-input-parameter">
+                            <value>$.Phone</value>
+                          </source>
+                          <target class="metadata-data-output-parameter">
+                            <metadata-key>Phone</metadata-key>
+                          </target>
+                        </json-path-execution>
+                      </json-path-service>
+                      <!-- Generate a UID -->
+                      <generate-unique-metadata-value-service>
+                        <unique-id>Generate ContactID</unique-id>
+                        <metadata-key>ContactId</metadata-key>
+                      </generate-unique-metadata-value-service>
+                      <jdbc-raw-data-capture-service>
+                        <unique-id>Insert Contact</unique-id>
+                        <connection class="shared-connection">
+                          <lookup-name>LocalMySQL</lookup-name>
+                        </connection>
+                        <statement-timeout>
+                          <unit>SECONDS</unit>
+                          <interval>30</interval>
+                        </statement-timeout>
+                        <statement>INSERT INTO `contacts` (id, FirstName, LastName, Phone, Email, LastUpdated, Created) VALUES (?,?,?,?,?,NOW(),NOW());</statement>
+                        <parameter-applicator class="sequential-parameter-applicator"/>
+                        <jdbc-statement-parameter>
+                          <query-string>ContactId</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                        <jdbc-statement-parameter>
+                          <query-string>FirstName</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                        <jdbc-statement-parameter>
+                          <query-string>LastName</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                        <jdbc-statement-parameter>
+                          <query-string>Phone</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                        <jdbc-statement-parameter>
+                          <query-string>Email</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                      </jdbc-raw-data-capture-service>
+                      <payload-from-metadata-service>
+                        <unique-id>Return ID</unique-id>
+                        <metadata-tokens>
+                          <key-value-pair>
+                            <key>ContactId</key>
+                            <value>__CONTACT_ID__</value>
+                          </key-value-pair>
+                        </metadata-tokens>
+                        <template><![CDATA[{"id" : "__CONTACT_ID__"}]]></template>
+                      </payload-from-metadata-service>
+                    </services>
+                  </service-list>
+
+                  <service-list>
+                    <unique-id>update</unique-id>
+                    <services>
+                    <!--
+                      {
+                        "FirstName" : "Lewin",
+                        "LastName" : "Chan",
+                        "Email" : "lchan@adaptris-abclabs.com",
+                        "Phone" : "0700 987654",
+                      }
+                    -->
+                      <json-path-service>
+                        <source class="string-payload-data-input-parameter"/>
+                        <json-path-execution>
+                          <source class="constant-data-input-parameter">
+                            <value>$.FirstName</value>
+                          </source>
+                          <target class="metadata-data-output-parameter">
+                            <metadata-key>FirstName</metadata-key>
+                          </target>
+                        </json-path-execution>
+                        <json-path-execution>
+                          <source class="constant-data-input-parameter">
+                            <value>$.LastName</value>
+                          </source>
+                          <target class="metadata-data-output-parameter">
+                            <metadata-key>LastName</metadata-key>
+                          </target>
+                        </json-path-execution>
+                        <json-path-execution>
+                          <source class="constant-data-input-parameter">
+                            <value>$.Email</value>
+                          </source>
+                          <target class="metadata-data-output-parameter">
+                            <metadata-key>Email</metadata-key>
+                          </target>
+                        </json-path-execution>
+                        <json-path-execution>
+                          <source class="constant-data-input-parameter">
+                            <value>$.Phone</value>
+                          </source>
+                          <target class="metadata-data-output-parameter">
+                            <metadata-key>Phone</metadata-key>
+                          </target>
+                        </json-path-execution>
+                      </json-path-service>
+
+                      <jdbc-raw-data-capture-service>
+                        <unique-id>Update Contact</unique-id>
+                        <connection class="shared-connection">
+                          <lookup-name>LocalMySQL</lookup-name>
+                        </connection>
+                        <statement-timeout>
+                          <unit>SECONDS</unit>
+                          <interval>30</interval>
+                        </statement-timeout>
+                        <statement>UPDATE contacts SET FirstName=?, LastName=?, Phone=?, Email=?, LastUpdated=NOW() where id=?</statement>
+                        <parameter-applicator class="sequential-parameter-applicator"/>
+                        <jdbc-statement-parameter>
+                          <query-string>FirstName</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                        <jdbc-statement-parameter>
+                          <query-string>LastName</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                        <jdbc-statement-parameter>
+                          <query-string>Phone</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                        <jdbc-statement-parameter>
+                          <query-string>Email</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                        <jdbc-statement-parameter>
+                          <query-string>ContactId</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                      </jdbc-raw-data-capture-service>
+                      <jdbc-data-query-service>
+                        <unique-id>Select Contact Records</unique-id>
+                        <connection class="shared-connection">
+                          <lookup-name>LocalMySQL</lookup-name>
+                        </connection>
+                        <statement-creator class="jdbc-configured-sql-statement">
+                          <statement>select * from contacts where id=?</statement>
+                        </statement-creator>
+                        <jdbc-statement-parameter>
+                          <query-string>ContactId</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                        <result-set-translator class="jdbc-json-payload-translator"/>
+                      </jdbc-data-query-service>
+                    </services>
+                  </service-list>
+
+
+                  <service-list>
+                    <unique-id>delete</unique-id>
+                    <services>
+                      <jdbc-raw-data-capture-service>
+                        <unique-id>Delete Contact</unique-id>
+                        <connection class="shared-connection">
+                          <lookup-name>LocalMySQL</lookup-name>
+                        </connection>
+                        <statement-timeout>
+                          <unit>SECONDS</unit>
+                          <interval>30</interval>
+                        </statement-timeout>
+                        <statement>DELETE FROM contacts where id=?</statement>
+                        <jdbc-statement-parameter>
+                          <query-string>ContactId</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                      </jdbc-raw-data-capture-service>
+                      <payload-from-metadata-service>
+                        <unique-id>Return ID</unique-id>
+                        <metadata-tokens>
+                          <key-value-pair>
+                            <key>ContactId</key>
+                            <value>__CONTACT_ID__</value>
+                          </key-value-pair>
+                        </metadata-tokens>
+                        <template><![CDATA[{"id" : "__CONTACT_ID__", "status": "deleted"}]]></template>
+                      </payload-from-metadata-service>
+                    </services>
+                  </service-list>
+
+                  <service-list>
+                    <unique-id>list</unique-id>
+                    <services>
+                      <jdbc-data-query-service>
+                        <unique-id>Select ALL Records</unique-id>
+                        <connection class="shared-connection">
+                          <lookup-name>LocalMySQL</lookup-name>
+                        </connection>
+                        <statement-creator class="jdbc-configured-sql-statement">
+                          <statement>select * from contacts</statement>
+                        </statement-creator>
+                        <result-set-translator class="jdbc-json-payload-translator"/>
+                      </jdbc-data-query-service>
+                    </services>
+                  </service-list>
+
+                  <service-list>
+                    <unique-id>retrieve</unique-id>
+                    <services>
+                      <jdbc-data-query-service>
+                        <unique-id>Select By ContactID</unique-id>
+                        <connection class="shared-connection">
+                          <lookup-name>LocalMySQL</lookup-name>
+                        </connection>
+                        <statement-creator class="jdbc-configured-sql-statement">
+                          <statement>select * from contacts where id=?</statement>
+                        </statement-creator>
+                        <jdbc-statement-parameter>
+                          <query-string>ContactId</query-string>
+                          <query-class>java.lang.String</query-class>
+                          <query-type>metadata</query-type>
+                        </jdbc-statement-parameter>
+                        <result-set-translator class="jdbc-json-payload-translator"/>
+                      </jdbc-data-query-service>
+                    </services>
+                  </service-list>
+
+                  <service-list>
+                    <unique-id>swagger</unique-id>
+                    <services>
+                      <aggregating-fs-consume-service>
+                        <fs-consumer>
+                          <destination class="consume-destination-from-metadata">
+                            <default-destination>${swagger.yaml.file}</default-destination>
+                          </destination>
+                          <delete-aggregated-files>false</delete-aggregated-files>
+                          <message-aggregator class="replace-with-first-message-aggregator"/>
+                        </fs-consumer>
+                      </aggregating-fs-consume-service>
+                      <yaml-to-json>
+                        <source class="string-payload-data-input-parameter"/>
+                        <target class="string-payload-data-output-parameter"/>
+                      </yaml-to-json>
+                      <!-- rewrite the swagger so it has the correct hostname -->
+                      <json-transform-service>
+                        <source-json class="string-payload-data-input-parameter"/>
+                        <target-json class="string-payload-data-output-parameter"/>
+                        <mapping-spec class="constant-data-input-parameter">
+                          <value>[{ "operation": "remove", "spec": {"host": "" }},{"operation": "shift", "spec": { "*": "&amp;","#${adapter.api.hostname}": "host"}}]</value>
+                        </mapping-spec>
+                        <metadata-filter class="regex-metadata-filter"/>
+                      </json-transform-service>
+                    </services>
+                  </service-list>
+
+                  <service-list>
+                    <unique-id>NotHandled</unique-id>
+                    <services>
+                      <add-metadata-service>
+                        <metadata-element>
+                          <key>ResponseCode</key>
+                          <value>400</value>
+                        </metadata-element>
+                      </add-metadata-service>
+                      <payload-from-metadata-service>
+                        <metadata-tokens/>
+                        <template><![CDATA[{"Status" : "Not Handled; please check"}]]></template>
+                      </payload-from-metadata-service>
+                    </services>
+                  </service-list>
+
+                </services>
+              </branching-service-collection>
+              <standalone-producer>
+                <unique-id>Send Response</unique-id>
+                <producer class="jetty-standard-response-producer">
+                  <status-provider class="http-metadata-status">
+                    <code-key>ResponseCode</code-key>
+                    <default-status>OK_200</default-status>
+                  </status-provider>
+                  <response-header-provider class="jetty-no-response-headers"/>
+                  <content-type-provider class="http-configured-content-type-provider">
+                    <mime-type>application/json</mime-type>
+                  </content-type-provider>
+                  <send-payload>true</send-payload>
+                </producer>
+              </standalone-producer>
+            </services>
+          </service-collection>
+        </standard-workflow>
+      </workflow-list>
+    </channel>
+  </channel-list>
+  <message-error-digester class="standard-message-error-digester">
+    <digest-max-size>100</digest-max-size>
+    <unique-id>ErrorDigest</unique-id>
+  </message-error-digester>
+</adapter>

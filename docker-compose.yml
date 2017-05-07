@@ -1,9 +1,9 @@
-# interlok-api-demo
-Docker image that demonstrates using interlok as a front-end to a simple little contact manager database.
-
-Requires mysql so it's best to start everything via docker-compose after cloning this project. `lewinc/interlok-api-demo:latest` is triggered `adaptris/interlok:snapshot-alpine` so will pretty much be running bleeding edge build.
-
-```
+#
+# Not that http://localhost:8080/swagger may give you an error, because it's hard-coded to query localhost:8080/contacts/swagger
+# Basically using docker-toolbox + windows7 means you're going for a non-localhost URL.
+# You'll need to wait awhile as well for mysql to come up
+# Check the DB has been created using the mysql console
+# docker exec -it api_demo_mysql mysql -uroot -ppassword
 version: '2'
 services:
   mysql:
@@ -20,7 +20,7 @@ services:
     # Mount and execute our SQL files.
     volumes:
       - ./sql:/docker-entrypoint-initdb.d
-
+      
   interlok:
     image: lewinc/interlok-api-demo:latest
     container_name: api_demo_interlok
@@ -36,10 +36,5 @@ services:
       - mysql
     links:
       - mysql:mysql
-```
-
-* `docker exec -it api_demo_mysql mysql -uroot -ppassword` to get onto the database and to do stuff.
-* Point your browser to http://localhost:8080/interlok for the UI
-* Point your browser to http://localhost:8080/swagger to get the swagger definition for the sample interface
-    * If your port bindings aren't for `localhost`; the default swagger.json won't be available the first time you goto the swagger app.
-    * You can test it via the swagger interface.
+     
+    
