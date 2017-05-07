@@ -117,7 +117,6 @@ paths:
           description: "successful operation"
           schema:
             $ref: "#/definitions/DatabaseResult"
-
 definitions:
   ContactId:
     type: "object"
@@ -153,6 +152,12 @@ definitions:
       Phone:
         type: "string"
         example: "+44 1234 56789"
+      LastUpdated:
+        type: "string"
+        example: "2017-05-07 15:13:38.0"
+      Created:
+        type: "string"
+        example: "2017-05-07 15:13:38.0"
   Contact:
     type: "object"
     required:
