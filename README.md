@@ -7,6 +7,7 @@ Requires mysql so it's best to start everything via docker-compose after cloning
 
 # Install steps
 
+* If you have cloned the project; skip straight to the ```docker-compose up```...
 * Create a file `sql/contacts.sql` that contains (this will be auto-applied by mysql-docker image)
 
 ```
