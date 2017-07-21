@@ -77,70 +77,43 @@
                 <unique-id>HTTP Router</unique-id>
                 <first-service-id>route</first-service-id>
                 <services>
-                  <embedded-scripting-service>
+                  <jetty-routing-service>
                     <unique-id>route</unique-id>
-                    <language>javascript</language>
-                    <branching-enabled>true</branching-enabled>
-                    <script><![CDATA[
-                    var routes = [
-                      { method:  "GET",
-                        pattern: "^/contacts/swagger$",
-                        vars:    [],
-                        service: "swagger" },
-                      { method:  "GET",
-                        pattern: "^/contacts/(.*)$",
-                        vars:    ["ContactId"],
-                        service: "retrieve" },
-                      { method:  "DELETE",
-                        pattern: "^/contacts/(.*)$",
-                        vars:    ["ContactId"],
-                        service: "delete" },
-                      { method:  "GET",
-                        pattern: "^/contacts$",
-                        vars:    [],
-                        service: "list" },
-                      { method:  "POST",
-                        pattern: "^/contacts$",
-                        vars:    [],
-                        service: "save" },
-                      { method:  "PATCH",
-                        pattern: "^/contacts/(.*)$",
-                        vars:    ["ContactId"],
-                        service: "update" }
-                    ]
-
-                    var method = message.getMetadataValue("httpmethod")
-                    var uri    = message.getMetadataValue("jettyURI")
-                    message.setNextServiceId("NotHandled")
-                    // Match each route against the actual Jetty metadata from the HTTP request
-                    for(var i=0; i<routes.length; i++) {
-                      log.trace("Trying to match route: " + JSON.stringify(routes[i]));
-
-                      if(method != routes[i].method) {
-                        log.trace("HTTP method " + routes[i].method + " did not match " + method);
-                        continue;
-                      }
-
-                      var result = new RegExp(routes[i].pattern).exec(uri)
-                      if(result == null) {
-                        log.trace("Pattern " + routes[i].pattern + " did not match " + uri);
-                        continue;
-                      }
-
-                      // Both method and pattern match, now parse out the vars
-                      for(var j=0; j<routes[i].vars.length; j++) {
-                        var name  = routes[i].vars[j]
-                        var value = result[j+1]
-                        log.trace("Adding metadata " + name + "=" + value)
-                        message.addMetadata(name, value)
-                      }
-
-                      message.setNextServiceId(routes[i].service)
-
-                      break
-                    }
-                  ]]></script>
-                  </embedded-scripting-service>
+                    <route>
+                      <url-pattern>^/contacts/swagger$</url-pattern>
+                      <method>GET</method>
+                      <service-id>swagger</service-id>
+                    </route>
+                    <route>
+                      <url-pattern>^/contacts$</url-pattern>
+                      <method>GET</method>
+                      <service-id>list</service-id>
+                    </route>
+                    <route>
+                      <url-pattern>^/contacts/(.*)$</url-pattern>
+                      <method>GET</method>
+                      <metadata-key>ContactId</metadata-key>
+                      <service-id>retrieve</service-id>
+                    </route>
+                    <route>
+                      <url-pattern>^/contacts/(.*)$</url-pattern>
+                      <method>DELETE</method>
+                      <metadata-key>ContactId</metadata-key>
+                      <service-id>delete</service-id>
+                    </route>
+                    <route>
+                      <url-pattern>^/contacts$</url-pattern>
+                      <method>POST</method>
+                      <service-id>save</service-id>
+                    </route>
+                    <route>
+                      <url-pattern>^/contacts/(.*)$</url-pattern>
+                      <method>PATCH</method>
+                      <metadata-key>ContactId</metadata-key>
+                      <service-id>update</service-id>
+                    </route>
+                    <default-service-id>NotHandled</default-service-id>
+                  </jetty-routing-service>
                   <service-list>
                     <unique-id>save</unique-id>
                     <services>
@@ -201,33 +174,7 @@
                           <unit>SECONDS</unit>
                           <interval>30</interval>
                         </statement-timeout>
-                        <statement>INSERT INTO `contacts` (id, FirstName, LastName, Phone, Email, LastUpdated, Created) VALUES (?,?,?,?,?,NOW(),NOW());</statement>
-                        <parameter-applicator class="sequential-parameter-applicator"/>
-                        <jdbc-statement-parameter>
-                          <query-string>ContactId</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
-                        <jdbc-statement-parameter>
-                          <query-string>FirstName</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
-                        <jdbc-statement-parameter>
-                          <query-string>LastName</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
-                        <jdbc-statement-parameter>
-                          <query-string>Phone</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
-                        <jdbc-statement-parameter>
-                          <query-string>Email</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
+                        <statement>INSERT INTO `contacts` (id, FirstName, LastName, Phone, Email, LastUpdated, Created) VALUES ('%message{ContactId}','%message{FirstName}','%message{LastName}','%message{Phone}','%message{Email}',NOW(),NOW());</statement>
                       </jdbc-raw-data-capture-service>
                       <payload-from-metadata-service>
                         <unique-id>Return ID</unique-id>
@@ -298,33 +245,7 @@
                           <unit>SECONDS</unit>
                           <interval>30</interval>
                         </statement-timeout>
-                        <statement>UPDATE contacts SET FirstName=?, LastName=?, Phone=?, Email=?, LastUpdated=NOW() where id=?</statement>
-                        <parameter-applicator class="sequential-parameter-applicator"/>
-                        <jdbc-statement-parameter>
-                          <query-string>FirstName</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
-                        <jdbc-statement-parameter>
-                          <query-string>LastName</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
-                        <jdbc-statement-parameter>
-                          <query-string>Phone</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
-                        <jdbc-statement-parameter>
-                          <query-string>Email</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
-                        <jdbc-statement-parameter>
-                          <query-string>ContactId</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
+                        <statement>UPDATE contacts SET FirstName='%message{FirstName}', LastName='%message{LastName}', Phone='%message{Phone}', Email='%message{Email}', LastUpdated=NOW() where id='%message{ContactId}'</statement>
                       </jdbc-raw-data-capture-service>
                       <jdbc-data-query-service>
                         <unique-id>Select Contact Records</unique-id>
@@ -332,13 +253,8 @@
                           <lookup-name>LocalMySQL</lookup-name>
                         </connection>
                         <statement-creator class="jdbc-configured-sql-statement">
-                          <statement>select * from contacts where id=?</statement>
+                          <statement>select * from contacts where id='%message{ContactId}'</statement>
                         </statement-creator>
-                        <jdbc-statement-parameter>
-                          <query-string>ContactId</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
                         <result-set-translator class="jdbc-json-payload-translator"/>
                       </jdbc-data-query-service>
                     </services>
@@ -357,12 +273,7 @@
                           <unit>SECONDS</unit>
                           <interval>30</interval>
                         </statement-timeout>
-                        <statement>DELETE FROM contacts where id=?</statement>
-                        <jdbc-statement-parameter>
-                          <query-string>ContactId</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
+                        <statement>DELETE FROM contacts where id='%message{ContactId}'</statement>
                       </jdbc-raw-data-capture-service>
                       <payload-from-metadata-service>
                         <unique-id>Return ID</unique-id>
@@ -402,13 +313,8 @@
                           <lookup-name>LocalMySQL</lookup-name>
                         </connection>
                         <statement-creator class="jdbc-configured-sql-statement">
-                          <statement>select * from contacts where id=?</statement>
+                          <statement>select * from contacts where id='%message{ContactId}'</statement>
                         </statement-creator>
-                        <jdbc-statement-parameter>
-                          <query-string>ContactId</query-string>
-                          <query-class>java.lang.String</query-class>
-                          <query-type>metadata</query-type>
-                        </jdbc-statement-parameter>
                         <result-set-translator class="jdbc-json-payload-translator"/>
                       </jdbc-data-query-service>
                     </services>
