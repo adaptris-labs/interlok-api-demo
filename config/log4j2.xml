@@ -7,7 +7,7 @@
         <Pattern>%-5p [%t] [%c{1.}] %m%n</Pattern>
       </PatternLayout>
     </Console>
-    
+
     <JmxLogAppender name="JmxLogAppender">
       <PatternLayout>
         <Pattern>%d{ISO8601} %-5p [%t] [%c{1}] %m%n</Pattern>
@@ -18,7 +18,7 @@
     </JmxLogAppender>
 
   </Appenders>
-    
+
   <Loggers>
 
     <Logger name="org" level="WARN"/>
@@ -40,6 +40,7 @@
     <Logger name="com.adaptris.transform.ff.Handler" level="INFO"/>
     <Logger name="com.adaptris.core.jms.MetadataHandler" level="DEBUG"/>
     <Logger name="com.adaptris.adaptergui" level="WARN"/>
+    <Logger name="com.adaptris.configapi" level="INFO"/>
     <Logger name="com.adaptris.core.util.DocumentBuilderFactoryBuilder" level="WARN"/>
     <Logger name="com.adaptris.core.marshaller.xstream" level="WARN"/>
     <Logger name="com.adaptris.adaptergui.util.ObjectConverter" level="FATAL"/>
