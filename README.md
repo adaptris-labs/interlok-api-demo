@@ -1,4 +1,4 @@
-# interlok-api-demo
+# interlok-api-demo [![Docker Build Status](https://img.shields.io/docker/build/lewinc/interlok-api-demo.svg)](https://hub.docker.com/r/lewinc/interlok-api-demo/)
 Docker image that demonstrates using interlok as a front-end to a simple little contact manager database.
 
 Requires mysql so it's best to start everything via docker-compose after cloning this project. If you clone the github project then the install steps are largely unecessary; you can just run `docker-compose up` straight away.
