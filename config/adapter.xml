@@ -22,31 +22,17 @@
       <message-error-handler class="standard-processing-exception-handler">
         <processing-exception-service class="service-list">
           <services>
-            <embedded-scripting-service>
-              <unique-id>Log object metadata</unique-id>
-              <language>javascript</language>
-              <script><![CDATA[
-                var objectHeaders = message.getObjectHeaders();
-
-                var exceptionReport = new java.util.HashMap();
-                exceptionReport.put("workflow", message.getMetadataValue("workflowId"));
-                var exception = objectHeaders["java.lang.Exception"];
-                if(exception != null) {
-                  exceptionReport.put("exception", exception);
-                }
-                var exceptionLocation = objectHeaders["java.lang.Exception_Cause"];
-                if(exceptionLocation != null) {
-                  exceptionReport.put("exceptionLocation", exceptionLocation);
-                }
-                message.setContent(new com.fasterxml.jackson.databind.ObjectMapper().writer(new com.fasterxml.jackson.core.util.DefaultPrettyPrinter()).writeValueAsString(exceptionReport), "UTF-8");
-
-              ]]></script>
-            </embedded-scripting-service>
+            <exception-report-service>
+              <exception-serializer class="exception-as-json-with-stacktrace"/>
+            </exception-report-service>
             <standalone-producer>
               <producer class="jetty-standard-response-producer">
                 <status-provider class="http-configured-status">
                   <status>INTERNAL_ERROR_500</status>
                 </status-provider>
+                <content-type-provider class="http-configured-content-type-provider">
+                  <mime-type>application/json</mime-type>
+                </content-type-provider>
                 <send-payload>true</send-payload>
               </producer>
             </standalone-producer>
