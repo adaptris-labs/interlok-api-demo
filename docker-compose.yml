@@ -7,7 +7,7 @@
 version: '2'
 services:
   mysql:
-    image: mysql/mysql-server:5.6
+    image: mysql/mysql-server:5.7.19
     container_name: api_demo_mysql
     hostname: api_demo_mysql.local
     environment:
