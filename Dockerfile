@@ -1,4 +1,4 @@
-FROM adaptris/interlok:snapshot-alpine
+FROM adaptris/interlok:3.8.4-zulu-alpine
 
 EXPOSE 8080
 

@@ -27,6 +27,7 @@
     <dependency org="com.adaptris" name="interlok-common" rev="${interlok-core-version}" conf="runtime->default;javadoc->javadoc"  changing="true"/>
     <dependency org="com.adaptris" name="interlok-json" rev="${interlok-core-version}" conf="runtime->default;javadoc->default" changing="true"/>
     <dependency org="com.adaptris" name="interlok-csv" rev="${interlok-core-version}" conf="runtime->default;javadoc->default" changing="true"/>
+    <dependency org="com.adaptris" name="interlok-boot" rev="${interlok-core-version}" conf="runtime->default;javadoc->default" changing="true"/>
 
     <dependency org="mysql" name="mysql-connector-java" rev="5.1.42" conf="runtime->default"/>
 

@@ -23,17 +23,17 @@ services:
       
   interlok:
     ## Build or not build
-    # build:
-    #  context: .
-    #  dockerfile: Dockerfile
-    image: lewinc/interlok-api-demo:latest
+    build:
+     context: .
+     dockerfile: Dockerfile
+    image: adaptrislabs/interlok-api-demo:latest
     container_name: api_demo_interlok
     hostname: api_demo_interlok.local
     environment:
       JVM_ARGS: -Xmx1G
       # Windows 7/docker-toolbox; you probably want to change from localhost:8080 to 192.168.99.100:8080 or similar.
       # So that the swagger file returned back to you is "testable" in the local swagger deployment.
-      JAVA_OPTS: -Dinterlok.db.url=jdbc:mysql://mysql:3306/api_demo -Dinterlok.db.user=api_demo -Dinterlok.db.password=api_demo -Dinterlok.api.host=localhost:8080
+      JAVA_OPTS: -Dinterlok.db.url=jdbc:mysql://mysql:3306/api_demo?useSSL=false -Dinterlok.db.user=api_demo -Dinterlok.db.password=api_demo -Dinterlok.api.host=localhost:8080
     ports:
       - '8080:8080'
     depends_on:
